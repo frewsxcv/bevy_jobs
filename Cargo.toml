@@ -1,0 +1,16 @@
+[package]
+name = "bevy_jobs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-channel = "1"
+bevy = { version = "0.8", default-features = false, features = [
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_ui",
+    "wayland",
+] }
+instant = "0.1"
