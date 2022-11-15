@@ -6,7 +6,7 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 async-channel = "1"
-bevy = { version = "0.8", default-features = false, features = [
+bevy = { version = "0.9", default-features = false, features = [
     "bevy_winit",
     "bevy_core_pipeline",
     "bevy_render",

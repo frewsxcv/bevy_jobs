@@ -6,13 +6,13 @@
     clippy::expect_used
 )]
 
-use bevy::prelude::Component;
+use bevy::prelude::*;
 use std::{any, future, pin};
 
 pub struct Plugin;
 
 impl bevy::prelude::Plugin for Plugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
+    fn build(&self, app: &mut App) {
         app.add_system(check_system)
             .insert_resource(JobOutcomePayloads(vec![]));
     }
@@ -61,7 +61,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
             })
             .detach();
 
-        commands.spawn().insert(in_progress_job);
+        commands.spawn(in_progress_job);
     }
 }
 
@@ -108,6 +108,7 @@ pub struct FinishedJobs<'w, 's> {
     phantom_data: std::marker::PhantomData<&'s ()>,
 }
 
+#[derive(Resource)]
 pub struct JobOutcomePayloads(Vec<JobOutcomePayload>);
 
 impl<'w, 's> FinishedJobs<'w, 's> {
