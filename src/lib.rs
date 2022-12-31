@@ -28,24 +28,27 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 
     fn name(&self) -> String;
 
-    fn perform(self) -> AsyncReturn<Self::Outcome>;
+    fn perform(self, context: Context) -> AsyncReturn<Self::Outcome>;
 
     fn spawn(self, commands: &mut bevy::ecs::system::Commands) {
-        let (sender, receiver) = async_channel::unbounded::<JobOutcomePayload>();
+        let (outcome_tx, outcome_recv) = async_channel::unbounded::<JobOutcomePayload>();
+        let (progress_tx, progress_recv) = async_channel::unbounded::<Progress>();
 
         let job_name = self.name();
         let in_progress_job = InProgressJob {
             name: job_name.clone(),
-            recv: receiver,
+            progress: 0,
+            progress_recv,
+            outcome_recv,
         };
 
         bevy::tasks::AsyncComputeTaskPool::get()
             .spawn(async move {
                 let instant = instant::Instant::now();
                 bevy::log::info!("Starting job '{}'", job_name);
-                let outcome = self.perform().await;
+                let outcome = self.perform(Context { progress_tx }).await;
                 bevy::log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
-                if let Err(e) = sender
+                if let Err(e) = outcome_tx
                     .send(JobOutcomePayload {
                         job_outcome_type_id: any::TypeId::of::<Self>(),
                         job_outcome: Box::new(outcome),
@@ -66,17 +69,32 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 }
 
 fn check_system(
-    query: bevy::ecs::system::Query<(&InProgressJob, bevy::ecs::entity::Entity)>,
+    mut query: bevy::ecs::system::Query<(&mut InProgressJob, bevy::ecs::entity::Entity)>,
     mut commands: bevy::ecs::system::Commands,
     mut finished_jobs: FinishedJobs,
 ) {
-    query.for_each(|(receiver, entity)| {
-        if let Ok(outcome) = receiver.recv.try_recv() {
+    query.for_each_mut(|(mut in_progress_job, entity)| {
+        // TODO: Maybe don't run the `try_recv` below every frame?
+        if let Ok(progress) = in_progress_job.progress_recv.try_recv() {
+            in_progress_job.progress = progress;
+        }
+
+        if let Ok(outcome) = in_progress_job.outcome_recv.try_recv() {
             bevy::log::info!("Job finished");
             commands.entity(entity).despawn();
             finished_jobs.outcomes.0.push(outcome);
         }
     })
+}
+
+pub struct Context {
+    progress_tx: async_channel::Sender<Progress>,
+}
+
+impl Context {
+    pub fn send_progress(&mut self, progress: Progress) -> async_channel::Send<u8> {
+        self.progress_tx.send(progress)
+    }
 }
 
 struct JobOutcomePayload {
@@ -95,10 +113,15 @@ impl<'w, 's> JobSpawner<'w, 's> {
     }
 }
 
+type Progress = u8;
+pub type ProgressSender = async_channel::Sender<Progress>;
+
 #[derive(Component)]
 pub struct InProgressJob {
     pub name: String,
-    recv: async_channel::Receiver<JobOutcomePayload>,
+    pub progress: Progress,
+    progress_recv: async_channel::Receiver<Progress>,
+    outcome_recv: async_channel::Receiver<JobOutcomePayload>,
 }
 
 #[derive(bevy::ecs::system::SystemParam)]
