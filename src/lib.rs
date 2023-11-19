@@ -6,14 +6,13 @@
     clippy::expect_used
 )]
 
-use bevy::prelude::*;
 use std::{any, future, pin};
 
 pub struct Plugin;
 
-impl bevy::prelude::Plugin for Plugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Update, check_system)
+impl bevy_app::Plugin for Plugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(bevy_app::Update, check_system)
             .insert_resource(JobOutcomePayloads(vec![]));
     }
 }
@@ -30,7 +29,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 
     fn perform(self, context: Context) -> AsyncReturn<Self::Outcome>;
 
-    fn spawn(self, commands: &mut bevy::ecs::system::Commands) {
+    fn spawn(self, commands: &mut bevy_ecs::system::Commands) {
         let (outcome_tx, outcome_recv) = async_channel::unbounded::<JobOutcomePayload>();
         let (progress_tx, progress_recv) = async_channel::unbounded::<Progress>();
 
@@ -42,12 +41,12 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
             outcome_recv,
         };
 
-        bevy::tasks::AsyncComputeTaskPool::get()
+        bevy_tasks::AsyncComputeTaskPool::get()
             .spawn(async move {
                 let instant = instant::Instant::now();
-                bevy::log::info!("Starting job '{}'", job_name);
+                bevy_log::info!("Starting job '{}'", job_name);
                 let outcome = self.perform(Context { progress_tx }).await;
-                bevy::log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
+                bevy_log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
                 if let Err(e) = outcome_tx
                     .send(JobOutcomePayload {
                         job_outcome_type_id: any::TypeId::of::<Self>(),
@@ -55,7 +54,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
                     })
                     .await
                 {
-                    bevy::log::error!(
+                    bevy_log::error!(
                         "Failed to send result from job {} back to main thread: {:?}",
                         job_name,
                         e
@@ -69,8 +68,8 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 }
 
 fn check_system(
-    mut query: bevy::ecs::system::Query<(&mut InProgressJob, bevy::ecs::entity::Entity)>,
-    mut commands: bevy::ecs::system::Commands,
+    mut query: bevy_ecs::system::Query<(&mut InProgressJob, bevy_ecs::entity::Entity)>,
+    mut commands: bevy_ecs::system::Commands,
     mut finished_jobs: FinishedJobs,
 ) {
     query.for_each_mut(|(mut in_progress_job, entity)| {
@@ -80,7 +79,7 @@ fn check_system(
         }
 
         if let Ok(outcome) = in_progress_job.outcome_recv.try_recv() {
-            bevy::log::info!("Job finished");
+            bevy_log::info!("Job finished");
             commands.entity(entity).despawn();
             finished_jobs.outcomes.0.push(outcome);
         }
@@ -102,9 +101,9 @@ struct JobOutcomePayload {
     job_outcome: Box<dyn any::Any + Send + Sync>,
 }
 
-#[derive(bevy::ecs::system::SystemParam)]
+#[derive(bevy_ecs::system::SystemParam)]
 pub struct JobSpawner<'w, 's> {
-    commands: bevy::ecs::system::Commands<'w, 's>,
+    commands: bevy_ecs::system::Commands<'w, 's>,
 }
 
 impl<'w, 's> JobSpawner<'w, 's> {
@@ -116,7 +115,7 @@ impl<'w, 's> JobSpawner<'w, 's> {
 type Progress = u8;
 pub type ProgressSender = async_channel::Sender<Progress>;
 
-#[derive(Component)]
+#[derive(bevy_ecs::component::Component)]
 pub struct InProgressJob {
     pub name: String,
     pub progress: Progress,
@@ -124,14 +123,14 @@ pub struct InProgressJob {
     outcome_recv: async_channel::Receiver<JobOutcomePayload>,
 }
 
-#[derive(bevy::ecs::system::SystemParam)]
+#[derive(bevy_ecs::system::SystemParam)]
 pub struct FinishedJobs<'w, 's> {
-    outcomes: bevy::ecs::system::ResMut<'w, JobOutcomePayloads>,
+    outcomes: bevy_ecs::system::ResMut<'w, JobOutcomePayloads>,
     #[system_param(ignore)]
     phantom_data: std::marker::PhantomData<&'s ()>,
 }
 
-#[derive(Resource)]
+#[derive(bevy_ecs::system::Resource)]
 pub struct JobOutcomePayloads(Vec<JobOutcomePayload>);
 
 impl<'w, 's> FinishedJobs<'w, 's> {
@@ -151,7 +150,7 @@ impl<'w, 's> FinishedJobs<'w, 's> {
         let outcome_payload = self.outcomes.0.remove(index);
         let outcome = outcome_payload.job_outcome.downcast::<J::Outcome>();
         if outcome.is_err() {
-            bevy::log::error!("encountered unexpected job result type");
+            bevy_log::error!("encountered unexpected job result type");
         }
         outcome.map(|n| *n).ok()
     }
