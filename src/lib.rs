@@ -74,11 +74,11 @@ fn check_system(
 ) {
     query.for_each_mut(|(mut in_progress_job, entity)| {
         // TODO: Maybe don't run the `try_recv` below every frame?
-        if let Ok(progress) = in_progress_job.progress_recv.try_recv() {
+        while let Ok(progress) = in_progress_job.progress_recv.try_recv() {
             in_progress_job.progress = progress;
         }
 
-        if let Ok(outcome) = in_progress_job.outcome_recv.try_recv() {
+        while let Ok(outcome) = in_progress_job.outcome_recv.try_recv() {
             bevy_log::info!("Job finished");
             commands.entity(entity).despawn();
             finished_jobs.outcomes.0.push(outcome);
