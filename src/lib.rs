@@ -43,7 +43,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 
         bevy_tasks::AsyncComputeTaskPool::get()
             .spawn(async move {
-                let instant = instant::Instant::now();
+                let instant = web_time::Instant::now();
                 bevy_log::info!("Starting job '{}'", job_name);
                 let outcome = self.perform(Context { progress_tx }).await;
                 bevy_log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
