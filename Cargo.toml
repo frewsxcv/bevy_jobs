@@ -6,8 +6,8 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 async-channel = "1"
-bevy_app = "0.12"
-bevy_ecs = "0.12"
-bevy_tasks = { version = "0.12", features = ["multi-threaded"] }
-bevy_log = "0.12"
+bevy_app = "0.13"
+bevy_ecs = "0.13"
+bevy_tasks = { version = "0.13", features = ["multi-threaded"] }
+bevy_log = "0.13"
 instant = "0.1"
