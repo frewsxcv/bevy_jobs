@@ -22,8 +22,16 @@ pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> 
 #[cfg(target_arch = "wasm32")]
 pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> + 'static>>;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum JobType {
+    Compute,
+    Io,
+}
+
 pub trait Job: any::Any + Sized + Send + Sync + 'static {
     type Outcome: any::Any + Send + Sync;
+
+    const JOB_TYPE: JobType = JobType::Compute;
 
     fn name(&self) -> String;
 
@@ -41,27 +49,30 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
             outcome_recv,
         };
 
-        bevy_tasks::AsyncComputeTaskPool::get()
-            .spawn(async move {
-                let instant = web_time::Instant::now();
-                bevy_log::info!("Starting job '{}'", job_name);
-                let outcome = self.perform(Context { progress_tx }).await;
-                bevy_log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
-                if let Err(e) = outcome_tx
-                    .send(JobOutcomePayload {
-                        job_outcome_type_id: any::TypeId::of::<Self>(),
-                        job_outcome: Box::new(outcome),
-                    })
-                    .await
-                {
-                    bevy_log::error!(
-                        "Failed to send result from job {} back to main thread: {:?}",
-                        job_name,
-                        e
-                    );
-                }
-            })
-            .detach();
+        let task = async move {
+            let instant = web_time::Instant::now();
+            bevy_log::info!("Starting job '{}'", job_name);
+            let outcome = self.perform(Context { progress_tx }).await;
+            bevy_log::info!("Completed job '{}' in {:?}", job_name, instant.elapsed());
+            if let Err(e) = outcome_tx
+                .send(JobOutcomePayload {
+                    job_outcome_type_id: any::TypeId::of::<Self>(),
+                    job_outcome: Box::new(outcome),
+                })
+                .await
+            {
+                bevy_log::error!(
+                    "Failed to send result from job {} back to main thread: {:?}",
+                    job_name,
+                    e
+                );
+            }
+        };
+
+        match Self::JOB_TYPE {
+            JobType::Compute => bevy_tasks::AsyncComputeTaskPool::get().spawn(task).detach(),
+            JobType::Io => bevy_tasks::IoTaskPool::get().spawn(task).detach(),
+        }
 
         commands.spawn(in_progress_job);
     }
