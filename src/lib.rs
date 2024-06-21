@@ -6,7 +6,7 @@
     clippy::expect_used
 )]
 
-use std::{any, future, pin};
+use std::{any, future, io, pin, sync};
 
 pub struct Plugin;
 
@@ -26,6 +26,7 @@ pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> 
 pub enum JobType {
     Compute,
     Io,
+    Tokio,
 }
 
 pub trait Job: any::Any + Sized + Send + Sync + 'static {
@@ -72,6 +73,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
         match Self::JOB_TYPE {
             JobType::Compute => bevy_tasks::AsyncComputeTaskPool::get().spawn(task).detach(),
             JobType::Io => bevy_tasks::IoTaskPool::get().spawn(task).detach(),
+            JobType::Tokio => spawn_tokio_task(task),
         }
 
         commands.spawn(in_progress_job);
@@ -164,5 +166,23 @@ impl<'w, 's> FinishedJobs<'w, 's> {
             bevy_log::error!("encountered unexpected job result type");
         }
         outcome.map(|n| *n).ok()
+    }
+}
+
+fn spawn_tokio_task<Output: Send + 'static>(
+    future: impl std::future::Future<Output = Output> + Send + 'static,
+) {
+    {
+        static TOKIO_RUNTIME: sync::OnceLock<io::Result<tokio::runtime::Runtime>> =
+            sync::OnceLock::new();
+        let _ = TOKIO_RUNTIME
+            .get_or_init(|| {
+                tokio::runtime::Builder::new_multi_thread()
+                    .enable_all()
+                    .build()
+            })
+            .as_ref()
+            .map(|runtime| runtime.spawn(future))
+            .expect("Failed to spawn task");
     }
 }

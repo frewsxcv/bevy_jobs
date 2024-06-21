@@ -11,3 +11,4 @@ bevy_ecs = "0.13"
 bevy_tasks = { version = "0.13", features = ["multi-threaded"] }
 bevy_log = "0.13"
 web-time = "1.0"
+tokio = { version = "1", features = ["full"] }
