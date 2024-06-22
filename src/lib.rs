@@ -6,7 +6,7 @@
     clippy::expect_used
 )]
 
-use std::{any, future, io, pin, sync};
+use std::{any, future, pin};
 
 pub struct Plugin;
 
@@ -173,10 +173,10 @@ impl<'w, 's> FinishedJobs<'w, 's> {
 
 #[cfg(feature = "tokio")]
 fn spawn_tokio_task<Output: Send + 'static>(
-    future: impl std::future::Future<Output = Output> + Send + 'static,
+    future: impl future::Future<Output = Output> + Send + 'static,
 ) {
     {
-        static TOKIO_RUNTIME: sync::OnceLock<tokio::runtime::Runtime> = sync::OnceLock::new();
+        static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
         let rt = TOKIO_RUNTIME.get_or_init(|| {
             #[cfg(not(target_arch = "wasm32"))]
             let mut runtime = tokio::runtime::Builder::new_multi_thread();
