@@ -26,6 +26,8 @@ pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> 
 pub enum JobType {
     Compute,
     Io,
+    #[cfg(feature = "tokio")]
+    Tokio,
 }
 
 pub trait Job: any::Any + Sized + Send + Sync + 'static {
@@ -72,6 +74,8 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
         match Self::JOB_TYPE {
             JobType::Compute => bevy_tasks::AsyncComputeTaskPool::get().spawn(task).detach(),
             JobType::Io => bevy_tasks::IoTaskPool::get().spawn(task).detach(),
+            #[cfg(feature = "tokio")]
+            JobType::Tokio => spawn_tokio_task(task),
         }
 
         commands.spawn(in_progress_job);
@@ -164,5 +168,26 @@ impl<'w, 's> FinishedJobs<'w, 's> {
             bevy_log::error!("encountered unexpected job result type");
         }
         outcome.map(|n| *n).ok()
+    }
+}
+
+#[cfg(feature = "tokio")]
+fn spawn_tokio_task<Output: Send + 'static>(
+    future: impl future::Future<Output = Output> + Send + 'static,
+) {
+    {
+        static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
+        let rt = TOKIO_RUNTIME.get_or_init(|| {
+            #[cfg(not(target_arch = "wasm32"))]
+            let mut runtime = tokio::runtime::Builder::new_multi_thread();
+            #[cfg(target_arch = "wasm32")]
+            let mut runtime = tokio::runtime::Builder::new_current_thread();
+            runtime
+                .enable_all()
+                .build()
+                .expect("Failed to create Tokio runtime for background tasks")
+        });
+
+        let _ = rt.spawn(future);
     }
 }
