@@ -39,7 +39,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 
     fn perform(self, context: Context) -> AsyncReturn<Self::Outcome>;
 
-    fn spawn(self, commands: &mut bevy_ecs::system::Commands) {
+    fn spawn(self, commands: &mut bevy_ecs::system::Commands) -> bevy_ecs::entity::Entity {
         let (outcome_tx, outcome_recv) = async_channel::unbounded::<JobOutcomePayload>();
         let (progress_tx, progress_recv) = async_channel::unbounded::<Progress>();
 
@@ -78,7 +78,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
             JobType::Tokio => spawn_tokio_task(task),
         }
 
-        commands.spawn(in_progress_job);
+        commands.spawn(in_progress_job).id()
     }
 }
 
@@ -87,7 +87,7 @@ fn check_system(
     mut commands: bevy_ecs::system::Commands,
     mut finished_jobs: FinishedJobs,
 ) {
-    query.for_each_mut(|(mut in_progress_job, entity)| {
+    query.iter_mut().for_each(|(mut in_progress_job, entity)| {
         // TODO: Maybe don't run the `try_recv` below every frame?
         while let Ok(progress) = in_progress_job.progress_recv.try_recv() {
             in_progress_job.progress = progress;
@@ -122,7 +122,7 @@ pub struct JobSpawner<'w, 's> {
 }
 
 impl<'w, 's> JobSpawner<'w, 's> {
-    pub fn spawn<J: Job>(&mut self, job: J) {
+    pub fn spawn<J: Job>(&mut self, job: J) -> bevy_ecs::entity::Entity {
         job.spawn(&mut self.commands)
     }
 }
@@ -176,7 +176,8 @@ fn spawn_tokio_task<Output: Send + 'static>(
     future: impl future::Future<Output = Output> + Send + 'static,
 ) {
     {
-        static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
+        static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> =
+            std::sync::OnceLock::new();
         let rt = TOKIO_RUNTIME.get_or_init(|| {
             #[cfg(not(target_arch = "wasm32"))]
             let mut runtime = tokio::runtime::Builder::new_multi_thread();
