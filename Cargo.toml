@@ -8,7 +8,7 @@ license = "MIT/Apache-2.0"
 tokio = ["dep:tokio"]
 
 [dependencies]
-async-channel = "1"
+async-channel = "2"
 bevy_app = "0.14"
 bevy_ecs = "0.14"
 bevy_tasks = { version = "0.14", features = ["multi_threaded"] }

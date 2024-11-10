@@ -17,10 +17,7 @@ impl bevy_app::Plugin for Plugin {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> + Send + 'static>>;
-#[cfg(target_arch = "wasm32")]
-pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> + 'static>>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum JobType {
