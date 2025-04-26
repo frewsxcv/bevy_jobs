@@ -141,11 +141,10 @@ pub struct InProgressJob {
 #[derive(bevy_ecs::system::SystemParam)]
 pub struct FinishedJobs<'w, 's> {
     outcomes: bevy_ecs::system::ResMut<'w, JobOutcomePayloads>,
-    #[system_param(ignore)]
     phantom_data: std::marker::PhantomData<&'s ()>,
 }
 
-#[derive(bevy_ecs::system::Resource)]
+#[derive(bevy_ecs::prelude::Resource)]
 pub struct JobOutcomePayloads(Vec<JobOutcomePayload>);
 
 impl<'w, 's> FinishedJobs<'w, 's> {

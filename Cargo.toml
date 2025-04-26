@@ -9,10 +9,10 @@ tokio = ["dep:tokio"]
 
 [dependencies]
 async-channel = "2"
-bevy_app = "0.15"
-bevy_ecs = "0.15"
-bevy_tasks = { version = "0.15", features = ["multi_threaded"] }
-bevy_log = "0.15"
+bevy_app = "0.16"
+bevy_ecs = "0.16"
+bevy_tasks = { version = "0.16", features = ["multi_threaded"] }
+bevy_log = "0.16"
 web-time = "1.0"
 
 tokio = { version = "1", features = ["rt", "sync"], optional = true }
