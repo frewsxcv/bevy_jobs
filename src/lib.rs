@@ -178,23 +178,24 @@ impl FinishedJobs<'_, '_> {
 #[cfg(feature = "tokio")]
 fn spawn_tokio_task<Output: Send + 'static>(future: impl AsyncReturn<Output> + 'static) {
     {
-        static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> =
-            std::sync::OnceLock::new();
-        let rt = TOKIO_RUNTIME.get_or_init(|| {
-            #[cfg(not(target_arch = "wasm32"))]
-            let mut runtime = tokio::runtime::Builder::new_multi_thread();
-            #[cfg(target_arch = "wasm32")]
-            let mut runtime = tokio::runtime::Builder::new_current_thread();
-            runtime
-                .enable_all()
-                .build()
-                .expect("Failed to create Tokio runtime for background tasks")
-        });
-
-        #[cfg(not(target_arch = "wasm32"))]
-        let _ = rt.spawn(future);
         #[cfg(target_arch = "wasm32")]
-        let _ = rt.block_on(future);
+        {
+            tokio_with_wasm::spawn(future);
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> =
+                std::sync::OnceLock::new();
+            let rt = TOKIO_RUNTIME.get_or_init(|| {
+                let mut runtime = tokio::runtime::Builder::new_multi_thread();
+                runtime
+                    .enable_all()
+                    .build()
+                    .expect("Failed to create Tokio runtime for background tasks")
+            });
+
+            let _ = rt.spawn(future);
+        }
     }
 }
 

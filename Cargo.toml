@@ -16,7 +16,7 @@ bevy_log = "0.16"
 web-time = "1.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-tokio = { version = "1", features = ["rt", "sync"], optional = true }
+tokio_with_wasm = { version = "0.8", features = ["rt"], optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1", features = ["rt-multi-thread"], optional = true }
