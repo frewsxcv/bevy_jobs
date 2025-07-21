@@ -5,7 +5,7 @@ edition = "2021"
 license = "MIT/Apache-2.0"
 
 [features]
-tokio = ["dep:tokio"]
+tokio = ["dep:tokio", "dep:tokio_with_wasm"]
 
 [dependencies]
 async-channel = "2"
