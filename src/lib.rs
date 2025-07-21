@@ -25,14 +25,24 @@ pub enum JobType {
     Tokio,
 }
 
-pub trait Job: any::Any + Sized + Send + Sync + 'static {
+#[cfg(not(target_arch = "wasm32"))]
+pub trait AsyncReturn<Output>: future::Future<Output = Output> + Send {}
+#[cfg(target_arch = "wasm32")]
+pub trait AsyncReturn<Output>: future::Future<Output = Output> {}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<F, Output> AsyncReturn<Output> for F where F: future::Future<Output = Output> + Send {}
+#[cfg(target_arch = "wasm32")]
+impl<F, Output> AsyncReturn<Output> for F where F: future::Future<Output = Output> {}
+
+pub trait Job: any::Any + Sized + Send + Sync {
     type Outcome: any::Any + Send + Sync;
 
     const JOB_TYPE: JobType = JobType::Compute;
 
     fn name(&self) -> String;
 
-    fn perform(self, context: Context) -> impl future::Future<Output = Self::Outcome> + Send;
+    fn perform(self, context: Context) -> impl AsyncReturn<Self::Outcome>;
 
     fn spawn(self, commands: &mut bevy_ecs::system::Commands) -> bevy_ecs::entity::Entity {
         let (outcome_tx, outcome_recv) = async_channel::unbounded::<JobOutcomePayload>();
@@ -184,5 +194,35 @@ fn spawn_tokio_task<Output: Send + 'static>(
         });
 
         let _ = rt.spawn(future);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    fn readme() {
+        type Error = ();
+        static URL: &str = "https://example.com";
+        fn fetch(_url: &str) -> impl std::future::Future<Output = Result<Vec<u8>, Error>> {
+            async move {
+                // Simulate fetching data
+                Ok(vec![1, 2, 3])
+            }
+        }
+
+        pub struct FetchRequestJob {
+            pub url: String,
+        }
+
+        impl crate::Job for FetchRequestJob {
+            type Outcome = Result<Vec<u8>, Error>;
+
+            fn name(&self) -> String {
+                format!("Fetching request: '{}'", URL)
+            }
+
+            async fn perform(self, _ctx: crate::Context) -> Self::Outcome {
+                fetch(&self.url).await
+            }
+        }
     }
 }

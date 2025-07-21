@@ -15,7 +15,7 @@ impl bevy_jobs::Job for FetchRequestJob {
     type Outcome = Result<Vec<u8>, Error>;
 
     fn name(&self) -> String {
-        format!("Fetching request: '{}'", url);
+        format!("Fetching request: '{}'", url)
     }
 
     async fn perform(self, ctx: bevy_jobs::Context) -> Self::Outcome {
