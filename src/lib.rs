@@ -176,9 +176,7 @@ impl FinishedJobs<'_, '_> {
 }
 
 #[cfg(feature = "tokio")]
-fn spawn_tokio_task<Output: Send + 'static>(
-    future: impl future::Future<Output = Output> + Send + 'static,
-) {
+fn spawn_tokio_task<Output: Send + 'static>(future: impl AsyncReturn<Output> + 'static) {
     {
         static TOKIO_RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> =
             std::sync::OnceLock::new();
@@ -193,12 +191,16 @@ fn spawn_tokio_task<Output: Send + 'static>(
                 .expect("Failed to create Tokio runtime for background tasks")
         });
 
+        #[cfg(not(target_arch = "wasm32"))]
         let _ = rt.spawn(future);
+        #[cfg(target_arch = "wasm32")]
+        let _ = rt.block_on(future);
     }
 }
 
 #[cfg(test)]
 mod test {
+    #[test]
     fn readme() {
         type Error = ();
         static URL: &str = "https://example.com";
