@@ -19,9 +19,7 @@ impl bevy_jobs::Job for FetchRequestJob {
     }
 
     async fn perform(self, ctx: bevy_jobs::Context) -> Self::Outcome {
-        Box::pin(async move {
-            fetch(&self.url).await
-        })
+        fetch(&self.url).await
     }
 }
 ```
