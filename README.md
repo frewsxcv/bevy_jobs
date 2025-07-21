@@ -18,7 +18,7 @@ impl bevy_jobs::Job for FetchRequestJob {
         format!("Fetching request: '{}'", url);
     }
 
-    fn perform(self, ctx: bevy_jobs::Context) -> bevy_jobs::AsyncReturn<Self::Outcome> {
+    async fn perform(self, ctx: bevy_jobs::Context) -> Self::Outcome {
         Box::pin(async move {
             fetch(&self.url).await
         })

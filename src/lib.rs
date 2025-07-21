@@ -6,7 +6,7 @@
     clippy::expect_used
 )]
 
-use std::{any, future, pin};
+use std::{any, future};
 
 pub struct Plugin;
 
@@ -16,11 +16,6 @@ impl bevy_app::Plugin for Plugin {
             .insert_resource(JobOutcomePayloads(vec![]));
     }
 }
-
-#[cfg(not(target_arch = "wasm32"))]
-pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> + Send + 'static>>;
-#[cfg(target_arch = "wasm32")]
-pub type AsyncReturn<Output> = pin::Pin<Box<dyn future::Future<Output = Output> + 'static>>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum JobType {
@@ -37,7 +32,7 @@ pub trait Job: any::Any + Sized + Send + Sync + 'static {
 
     fn name(&self) -> String;
 
-    fn perform(self, context: Context) -> AsyncReturn<Self::Outcome>;
+    fn perform(self, context: Context) -> impl future::Future<Output = Self::Outcome> + Send;
 
     fn spawn(self, commands: &mut bevy_ecs::system::Commands) -> bevy_ecs::entity::Entity {
         let (outcome_tx, outcome_recv) = async_channel::unbounded::<JobOutcomePayload>();
@@ -121,7 +116,7 @@ pub struct JobSpawner<'w, 's> {
     commands: bevy_ecs::system::Commands<'w, 's>,
 }
 
-impl<'w, 's> JobSpawner<'w, 's> {
+impl JobSpawner<'_, '_> {
     pub fn spawn<J: Job>(&mut self, job: J) -> bevy_ecs::entity::Entity {
         job.spawn(&mut self.commands)
     }
@@ -147,7 +142,7 @@ pub struct FinishedJobs<'w, 's> {
 #[derive(bevy_ecs::prelude::Resource)]
 pub struct JobOutcomePayloads(Vec<JobOutcomePayload>);
 
-impl<'w, 's> FinishedJobs<'w, 's> {
+impl FinishedJobs<'_, '_> {
     #[inline]
     pub fn take_next<J: Job>(&mut self) -> Option<J::Outcome> {
         let index = self
