@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["bevy_jobs", "bevy_job_fetch"]
+members = ["bevy_jobs", "bevy_jobs_fetch"]
 
 [workspace.package]
 version = "0.1.0"

@@ -4,7 +4,7 @@ A lightweight job framework for Bevy.
 
 This crate provides a simple way to define, spawn, and manage jobs that run in the background. It is designed to be extensible, allowing you to create your own job types and runners.
 
-It also includes `bevy_job_fetch`, a crate that provides a generic `Job` for fetching data from a URL.
+It also includes `bevy_jobs_fetch`, a crate that provides a generic `Job` for fetching data from a URL.
 
 ## Getting started
 
@@ -91,7 +91,7 @@ fn render_in_progress(
 }
 ```
 
-## `bevy_job_fetch`
+## `bevy_jobs_fetch`
 
 This is a crate that provides a generic `Job` for fetching data from a URL.
 
@@ -104,7 +104,7 @@ Here is an example of how to fetch a file and handle the result:
 ```rust
 use bevy::prelude::*;
 use bevy_jobs::{JobSpawner, FinishedJobs};
-use bevy_jobs::job_fetch::{NetworkFetchJob, FetchedFile};
+use bevy_jobs::jobs_fetch::{NetworkFetchJob, FetchedFile};
 
 #[derive(Clone, Send, Sync, Debug, 'static)]
 struct MyUserData {

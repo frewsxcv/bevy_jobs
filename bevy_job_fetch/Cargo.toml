@@ -1,5 +1,5 @@
 [package]
-name = "bevy_job_fetch"
+name = "bevy_jobs_fetch"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
