@@ -1,3 +1,5 @@
+**⚠️ This repository has moved to <https://tangled.org/rwell.org/bevy_jobs> ⚠️**
+
 # bevy_jobs
 
 A lightweight job framework for Bevy.
